@@ -1,6 +1,6 @@
 package com.example.ecsite.controller;
 
-import com.example.ecsite.entity.Product;
+import com.example.ecsite.dto.ProductResponse;
 import com.example.ecsite.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,28 +27,47 @@ class ProductControllerTest {
     @MockBean
     private ProductService productService;
 
-    private Product product(Long id, String name, int price, String category, int stock) {
-        Product p = new Product();
-        p.setId(id);
-        p.setName(name);
-        p.setPrice(price);
-        p.setImageUrl("images/dummy.jpg");
-        p.setCategory(category);
-        p.setStock(stock);
-        return p;
+    private ProductResponse response(Long id, String name, int price, String category, int stock) {
+        return new ProductResponse(id, name, name + " description", price,
+                "images/dummy.jpg", category, stock);
     }
 
     @Test
     @DisplayName("GET /api/products は 200 と一覧を返す")
     void getAll_returns200() throws Exception {
-        when(productService.getAllProducts())
-                .thenReturn(List.of(product(1L, "ボールペン", 120, "writing", 120)));
+        when(productService.searchProducts(null, null))
+            .thenReturn(List.of(response(1L, "ボールペン", 120, "writing", 120)));
 
         mockMvc.perform(get("/api/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("ボールペン"))
                 .andExpect(jsonPath("$[0].category").value("writing"));
     }
+
+            @Test
+            @DisplayName("キーワードとカテゴリで商品を検索できる")
+            void search_returnsFilteredProducts() throws Exception {
+            when(productService.searchProducts("pen", "writing"))
+                .thenReturn(List.of(response(1L, "Pen", 120, "writing", 120)));
+
+            mockMvc.perform(get("/api/products")
+                    .param("keyword", "pen")
+                    .param("category", "writing"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Pen"))
+                .andExpect(jsonPath("$[0].category").value("writing"))
+                .andExpect(jsonPath("$[0].description").value("Pen description"));
+            }
+
+            @Test
+            @DisplayName("検索結果がない場合は空配列を返す")
+            void search_returnsEmptyArray() throws Exception {
+            when(productService.searchProducts("missing", null)).thenReturn(List.of());
+
+            mockMvc.perform(get("/api/products").param("keyword", "missing"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+            }
 
     @Test
     @DisplayName("存在しない id は 404 を返す")
@@ -57,5 +76,19 @@ class ProductControllerTest {
 
         mockMvc.perform(get("/api/products/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("商品詳細は表示項目を返す")
+    void getById_returnsDetails() throws Exception {
+        when(productService.getProductById(1L))
+                .thenReturn(Optional.of(response(1L, "Pen", 120, "writing", 120)));
+
+        mockMvc.perform(get("/api/products/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Pen"))
+                .andExpect(jsonPath("$.description").value("Pen description"))
+                .andExpect(jsonPath("$.price").value(120))
+                .andExpect(jsonPath("$.category").value("writing"));
     }
 }

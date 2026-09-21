@@ -1,11 +1,13 @@
 package com.example.ecsite.service;
 
+import com.example.ecsite.dto.ProductResponse;
 import com.example.ecsite.entity.Product;
 import com.example.ecsite.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -20,12 +22,30 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
+    public List<ProductResponse> searchProducts(String keyword, String category) {
+        String normalizedKeyword = normalize(keyword);
+        return productRepository.search(normalizedKeyword, category).stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    public Optional<ProductResponse> getProductById(Long id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return productRepository.findById(id).map(ProductResponse::from);
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional
     public Product createProduct(Product product) {
-        return productRepository.save(product);
+        return productRepository.save(Objects.requireNonNull(product, "product must not be null"));
     }
 }

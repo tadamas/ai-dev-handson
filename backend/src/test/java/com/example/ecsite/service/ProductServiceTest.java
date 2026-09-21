@@ -1,5 +1,6 @@
 package com.example.ecsite.service;
 
+import com.example.ecsite.dto.ProductResponse;
 import com.example.ecsite.entity.Product;
 import com.example.ecsite.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,7 @@ class ProductServiceTest {
         p.setName(name);
         p.setPrice(price);
         p.setImageUrl("images/dummy.jpg");
+        p.setDescription(name + " description");
         p.setCategory(category);
         p.setStock(stock);
         return p;
@@ -44,11 +46,49 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("検索条件を正規化してリポジトリへ渡す")
+    void searchProducts_normalizesKeywordAndFilters() {
+        when(repository.search("pen", "writing")).thenReturn(List.of(
+                product(1L, "Pen", 120, "writing", 120)));
+
+        List<ProductResponse> actual = service.searchProducts("  pen  ", "writing");
+
+        assertThat(actual).hasSize(1);
+        assertThat(actual.get(0).getName()).isEqualTo("Pen");
+        verify(repository).search("pen", "writing");
+    }
+
+    @Test
+    @DisplayName("空白だけのキーワードは未指定として検索する")
+    void searchProducts_blankKeywordIsOmitted() {
+        when(repository.search(null, "paper")).thenReturn(List.of(
+                product(2L, "ノート", 200, "paper", 80)));
+
+        List<ProductResponse> actual = service.searchProducts("   ", "paper");
+
+        assertThat(actual).singleElement().satisfies(response ->
+            assertThat(response.getCategory()).isEqualTo("paper"));
+        verify(repository).search(null, "paper");
+    }
+
+    @Test
     @DisplayName("存在しない id は空で返る")
     void getProductById_notFound() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThat(service.getProductById(99L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("詳細取得は表示 DTO に変換する")
+    void getProductById_returnsResponse() {
+        when(repository.findById(1L)).thenReturn(Optional.of(
+                product(1L, "ボールペン", 120, "writing", 120)));
+
+        Optional<ProductResponse> actual = service.getProductById(1L);
+
+        assertThat(actual).isPresent();
+        assertThat(actual.orElseThrow().getName()).isEqualTo("ボールペン");
     }
 
     @Test

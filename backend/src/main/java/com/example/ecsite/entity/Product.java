@@ -14,6 +14,9 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false, length = 1000)
+    private String description;
+
     @Column(nullable = false)
     private Integer price;
 
@@ -32,6 +35,9 @@ public class Product {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public Integer getPrice() { return price; }
     public void setPrice(Integer price) { this.price = price; }
